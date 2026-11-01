@@ -1,6 +1,25 @@
+# Python
 gymenv/
 __pycache__/
-*.pyc
+*.py[cod]
+
+# Django
 db.sqlite3
 staticfiles/
+media/
+
+# Environment variables
 .env
+.env.*
+
+# Node.js
+node_modules/
+dist/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
