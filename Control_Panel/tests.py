@@ -1,3 +1,4 @@
 from django.test import TestCase
+from .tests_api import ControlPanelAdminAPITests
 
-# Create your tests here.
+__all__ = ['ControlPanelAdminAPITests']
