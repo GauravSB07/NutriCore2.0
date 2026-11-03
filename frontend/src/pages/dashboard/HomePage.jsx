@@ -121,30 +121,31 @@ export default function HomePage() {
   const profileImg = user?.profile?.profile_image || loginFallbackImg;
 
   return (
-    <div className="flex-1 flex flex-col justify-between relative">
-      <div className="px-4 pt-4 pb-24 overflow-y-auto no-scrollbar">
-        {/* 🔝 HEADER */}
-        <div className="flex justify-between items-center mb-5">
-          <div className="flex items-center gap-3">
-            <Link to="/profile" className="relative group">
-              <img
-                src={profileImg}
-                alt="Profile"
-                className="w-10 h-10 rounded-full object-cover border-2 border-[#7c3aed] shadow-sm transition group-hover:scale-105"
-                loading="eager"
-                decoding="async"
-                width={40}
-                height={40}
-              />
-            </Link>
-            <div>
-              <h2 className="text-lg font-semibold text-gray-800 leading-tight">
-                Hello, {user?.username || 'Champion'} 🙋
-              </h2>
-              <p className="text-xs text-gray-400">Welcome to NutriCore</p>
-            </div>
+    <div className="relative">
+      <div className="px-4 pt-4 pb-32">
+      {/* 🔝 HEADER */}
+      <div className="flex justify-between items-center mb-5">
+        <div className="flex items-center gap-3">
+          <Link to="/profile" className="relative group">
+            <img
+              src={profileImg}
+              alt="Profile"
+              className="w-10 h-10 rounded-full object-cover border-2 border-[#7c3aed] shadow-sm transition group-hover:scale-105"
+              loading="eager"
+              decoding="async"
+              width={40}
+              height={40}
+            />
+          </Link>
+          <div>
+            <h2 className="text-lg font-semibold text-gray-800 leading-tight">
+              Hello, {user?.username || 'Champion'} 🙋
+            </h2>
+            <p className="text-xs text-gray-400">Welcome to NutriCore</p>
           </div>
+        </div>
 
+        <div className="flex flex-col items-end">
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -160,7 +161,11 @@ export default function HomePage() {
               <span>{metrics.points} Points</span>
             </div>
           </div>
+          <span className="text-[11px] text-gray-400 font-medium mt-1">
+            Built by <span className="text-[#7c3aed] font-semibold">Gaurav</span>
+          </span>
         </div>
+      </div>
 
         {/* PENDING NOTIFICATION BANNER */}
         {pendingNotice && (
