@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import logoImg from '../assets/images/logo.png';
+import logoImg from '../assets/images/logo.webp';
 import api, { authService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import BottomNav from '../components/common/BottomNav';
 import { 
   CheckCircle2, 
   Server, 
@@ -221,9 +220,6 @@ export default function TestPage() {
           )}
         </div>
       </div>
-
-      {/* Floating Bottom Nav */}
-      <BottomNav activeTab={activeTab} onSelectTab={setActiveTab} />
     </div>
   );
 }

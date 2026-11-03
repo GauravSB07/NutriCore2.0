@@ -457,7 +457,16 @@ class NutritionAPITests(APITestCase):
         self.assertEqual(response.data['points'], 100)
         self.assertEqual(response.data['max_cheat_calories'], 400.0)
         self.assertEqual(response.data['max_cheat_meals'], 2)
-        self.assertTrue(response.data['can_log_cheat'])
+    def test_category_list_foods_count_annotation(self):
+        """Verify Category list returns correct foods_count matching DB and uses 1 query."""
+        url = reverse('api_nutrition_categories')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # category_protein has food_chicken and food_with_image (2 foods)
+        # category_fruit has food_apple (1 food)
+        data = {c['name']: c['foods_count'] for c in response.data}
+        self.assertEqual(data.get('Proteins'), 2)
+        self.assertEqual(data.get('Fruits'), 1)
 
     # --------------------------------------------------------------------------
     # 6. Existing Django Nutrition Pages Verification

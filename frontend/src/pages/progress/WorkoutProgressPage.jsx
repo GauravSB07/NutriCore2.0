@@ -2,8 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, RefreshCw, Dumbbell } from 'lucide-react';
 import { progressService } from '../../services/api';
-import workoutProgressHeaderImg from '../../assets/images/workout_progress.png';
-import workoutProgressFooterImg from '../../assets/images/workoutprogress.png';
+import workoutProgressHeaderImg from '../../assets/images/workout_progress.webp';
+import workoutProgressFooterImg from '../../assets/images/workoutprogress.webp';
 
 export default function WorkoutProgressPage() {
   const navigate = useNavigate();
@@ -83,6 +83,10 @@ export default function WorkoutProgressPage() {
               src={workoutProgressHeaderImg}
               alt="Workout Progress"
               className="w-14 h-14 object-contain"
+              loading="eager"
+              decoding="async"
+              width={56}
+              height={56}
             />
           </div>
 
@@ -180,6 +184,10 @@ export default function WorkoutProgressPage() {
             src={workoutProgressFooterImg}
             alt="Workout Results"
             className="w-16 h-16 rounded-xl object-cover flex-shrink-0 ml-3"
+            loading="lazy"
+            decoding="async"
+            width={64}
+            height={64}
           />
         </div>
       </div>

@@ -99,12 +99,16 @@ export default function MealListPage() {
 
           <div className="w-[70px] h-[70px] flex items-center justify-center bg-white/60 rounded-2xl shadow-[0_6px_14px_rgba(0,0,0,0.06)] border border-purple-100/50">
             <img
-              src="/images/meal.png"
+              src="/images/meal.webp"
               alt="Meals"
               className="w-[60px] h-[60px] object-contain"
+              loading="eager"
+              decoding="async"
+              width={60}
+              height={60}
               onError={(e) => {
                 e.target.onerror = null;
-                e.target.src = '/images/login.jpg';
+                e.target.src = '/images/login.webp';
               }}
             />
           </div>
@@ -229,12 +233,16 @@ export default function MealListPage() {
                 className="flex gap-3 p-3 rounded-[18px] bg-white/80 backdrop-blur-md shadow-[0_6px_18px_rgba(139,92,246,0.12)] border border-purple-50 items-center"
               >
                 <img
-                  src={meal.food?.image || '/images/login.jpg'}
+                  src={meal.food?.image_url || meal.food?.image || '/images/login.webp'}
                   alt={meal.food?.name || 'Meal'}
                   className="w-[55px] h-[55px] rounded-[14px] object-cover flex-shrink-0"
+                  loading="lazy"
+                  decoding="async"
+                  width={55}
+                  height={55}
                   onError={(e) => {
                     e.target.onerror = null;
-                    e.target.src = '/images/login.jpg';
+                    e.target.src = '/images/login.webp';
                   }}
                 />
 

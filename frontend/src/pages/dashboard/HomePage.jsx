@@ -1,12 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { dashboardService } from '../../services/api';
-import BottomNav from '../../components/common/BottomNav';
-import workoutLibImg from '../../assets/images/workoutlib.png';
-import progressImg from '../../assets/images/progressimage.png';
-import workoutChartsImg from '../../assets/images/workoutcharts.png';
-import loginFallbackImg from '../../assets/images/login.jpg';
+import workoutLibImg from '../../assets/images/workoutlib.webp';
+import progressImg from '../../assets/images/progressimage.webp';
+import workoutChartsImg from '../../assets/images/workoutcharts.webp';
+import loginFallbackImg from '../../assets/images/login.webp';
 import { RefreshCw, AlertCircle, X, ChevronRight } from 'lucide-react';
 
 export default function HomePage() {
@@ -32,39 +31,46 @@ export default function HomePage() {
     points: 0,
   });
 
+  const inFlightRef = useRef(false);
+
+  // User profile values for calculation fallbacks
+  const userGoal = user?.profile?.goal;
+  const userCalTarget = user?.profile?.daily_calorie_target || 2000;
+  const userStepsTarget = user?.profile?.daily_steps_target || 8000;
+  const userPoints = user?.profile?.points || 0;
+
   const fetchDashboardData = useCallback(async () => {
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
     setLoading(true);
     setError(null);
     try {
-      // Execute parallel calls to backend REST APIs
-      const [nutritionSummary, progressDaily, cheatStatus] = await Promise.allSettled([
-        dashboardService.getNutritionSummary(),
+      // Execute parallel calls to backend REST APIs (daily progress + cheat status).
+      // Note: getProgressDaily already includes total_calories, total_protein, water,
+      // steps, and day_type, rendering the redundant getNutritionSummary request obsolete.
+      const [progressDaily, cheatStatus] = await Promise.allSettled([
         dashboardService.getProgressDaily(),
         dashboardService.getCheatStatus(),
       ]);
 
-      const nutData = nutritionSummary.status === 'fulfilled' ? nutritionSummary.value : null;
       const progData = progressDaily.status === 'fulfilled' ? progressDaily.value : null;
       const cheatData = cheatStatus.status === 'fulfilled' ? cheatStatus.value : null;
 
       // Extract values with exact fallbacks matching Django business logic
-      const totalCalories =
-        nutData?.calories?.consumed ?? progData?.nutrition?.total_calories ?? 0;
-      const totalWater =
-        nutData?.water_summary?.total_consumed_ml ?? progData?.water?.total_water_ml ?? 0;
-      const totalProtein =
-        nutData?.macronutrients?.protein?.consumed ?? progData?.nutrition?.total_protein ?? 0;
-      const cheatCount =
-        cheatData?.today_cheat_meals ?? nutData?.cheat_summary?.cheat_meals_count ?? 0;
+      const totalCalories = progData?.nutrition?.total_calories ?? 0;
+      const totalWater = progData?.water?.total_water_ml ?? 0;
+      const totalProtein = progData?.nutrition?.total_protein ?? 0;
+      const cheatCount = cheatData?.today_cheat_meals ?? 0;
+
       const dayType =
         progData?.nutrition?.day_type ||
-        (user?.profile?.goal === 'fat_loss' || user?.profile?.goal === 'cut'
-          ? (totalCalories <= (user?.profile?.daily_calorie_target || 2000) ? 'Good (Fat Loss)' : 'Overeaten')
-          : (totalCalories >= (user?.profile?.daily_calorie_target || 2000) ? 'Good (Bulk)' : 'Undereaten'));
+        (userGoal === 'fat_loss' || userGoal === 'cut'
+          ? (totalCalories <= userCalTarget ? 'Good (Fat Loss)' : 'Overeaten')
+          : (totalCalories >= userCalTarget ? 'Good (Bulk)' : 'Undereaten'));
       const goodDay = progData?.nutrition?.good_day ?? (dayType.startsWith('Good'));
       const totalSteps = progData?.steps?.total_steps ?? 0;
-      const stepsTarget = progData?.steps?.daily_steps_target || user?.profile?.daily_steps_target || 8000;
-      const points = cheatData?.points ?? user?.profile?.points ?? 0;
+      const stepsTarget = progData?.steps?.daily_steps_target || userStepsTarget;
+      const points = cheatData?.points ?? progData?.points ?? userPoints;
 
       setMetrics({
         calories: Math.round(totalCalories),
@@ -80,9 +86,10 @@ export default function HomePage() {
     } catch (err) {
       setError('Unable to load latest dashboard statistics.');
     } finally {
+      inFlightRef.current = false;
       setLoading(false);
     }
-  }, [user]);
+  }, [userGoal, userCalTarget, userStepsTarget, userPoints]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -124,6 +131,10 @@ export default function HomePage() {
                 src={profileImg}
                 alt="Profile"
                 className="w-10 h-10 rounded-full object-cover border-2 border-[#7c3aed] shadow-sm transition group-hover:scale-105"
+                loading="eager"
+                decoding="async"
+                width={40}
+                height={40}
               />
             </Link>
             <div>
@@ -307,7 +318,15 @@ export default function HomePage() {
               <h3 className="text-base font-semibold text-gray-800 mt-1">Workout Library</h3>
             </div>
             <div className="mt-3 flex justify-center">
-              <img src={workoutLibImg} alt="Workout Library" className="h-16 object-contain" />
+              <img
+                src={workoutLibImg}
+                alt="Workout Library"
+                className="h-16 object-contain"
+                loading="lazy"
+                decoding="async"
+                width={96}
+                height={64}
+              />
             </div>
           </button>
 
@@ -370,7 +389,15 @@ export default function HomePage() {
               <p className="text-xs text-gray-500">Muscle Progress</p>
             </div>
             <div className="mt-3 flex justify-center">
-              <img src={progressImg} alt="Progress" className="h-16 object-contain" />
+              <img
+                src={progressImg}
+                alt="Progress"
+                className="h-16 object-contain"
+                loading="lazy"
+                decoding="async"
+                width={64}
+                height={64}
+              />
             </div>
           </button>
 
@@ -384,7 +411,15 @@ export default function HomePage() {
               <p className="text-xs text-gray-500">Workout Charts</p>
             </div>
             <div className="mt-3 flex justify-center">
-              <img src={workoutChartsImg} alt="Charts" className="h-16 object-contain" />
+              <img
+                src={workoutChartsImg}
+                alt="Charts"
+                className="h-16 object-contain"
+                loading="lazy"
+                decoding="async"
+                width={64}
+                height={64}
+              />
             </div>
           </button>
         </div>
@@ -434,9 +469,6 @@ export default function HomePage() {
           +
         </button>
       </div>
-
-      {/* BOTTOM NAVIGATION */}
-      <BottomNav activeTab={activeTab} onSelectTab={handleTabSelect} />
     </div>
   );
 }

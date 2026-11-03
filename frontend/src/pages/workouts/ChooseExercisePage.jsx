@@ -97,12 +97,16 @@ export default function ChooseExercisePage() {
 
         <div className="w-[110px] h-[110px] flex items-center justify-center flex-shrink-0">
           <img
-            src={subMuscle?.image_url || subMuscle?.image || '/images/login.jpg'}
+            src={subMuscle?.image_url || subMuscle?.image || '/images/login.webp'}
             alt={subMuscle?.name || 'Submuscle'}
             className="w-[110px] h-[110px] object-contain drop-shadow"
+            loading="eager"
+            decoding="async"
+            width={110}
+            height={110}
             onError={(e) => {
               e.target.onerror = null;
-              e.target.src = '/images/login.jpg';
+              e.target.src = '/images/login.webp';
             }}
           />
         </div>
@@ -179,12 +183,16 @@ export default function ChooseExercisePage() {
 
                   {/* IMAGE INSIDE CIRCLE */}
                   <img
-                    src={e.image_url || e.image || '/images/login.jpg'}
+                    src={e.image_url || e.image || '/images/login.webp'}
                     alt={e.name}
                     className="w-11 h-11 object-contain rounded-full"
+                    loading="lazy"
+                    decoding="async"
+                    width={44}
+                    height={44}
                     onError={(ev) => {
                       ev.target.onerror = null;
-                      ev.target.src = '/images/login.jpg';
+                      ev.target.src = '/images/login.webp';
                     }}
                   />
                 </div>
@@ -246,9 +254,13 @@ export default function ChooseExercisePage() {
         </div>
 
         <img
-          src="/images/protip.png"
+          src="/images/protip.webp"
           alt="Pro Tip"
           className="w-14 h-14 object-contain flex-shrink-0"
+          loading="lazy"
+          decoding="async"
+          width={56}
+          height={56}
           onError={(e) => {
             e.target.onerror = null;
             e.target.style.display = 'none';

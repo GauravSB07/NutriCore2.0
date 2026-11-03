@@ -88,11 +88,25 @@ export default function CheatMealPage() {
   const cal100 = food?.calories_per_100g || 0;
   const calUnit = food?.calories_per_unit || 0;
 
-  const calories =
-    unitType === 'g' || unitType === 'ml' ? (cal100 / 100) * q : calUnit * q;
+  let calculatedCalories = 0;
+  if (unitType === 'g' || unitType === 'ml') {
+    if (cal100 > 0) {
+      calculatedCalories = (cal100 / 100) * q;
+    } else if (calUnit > 0) {
+      calculatedCalories = calUnit * q;
+    }
+  } else {
+    if (calUnit > 0) {
+      calculatedCalories = calUnit * q;
+    } else if (cal100 > 0) {
+      calculatedCalories = (cal100 / 100) * (q * (food?.serving_quantity || 100));
+    }
+  }
+
+  const calories = Math.round(calculatedCalories * 10) / 10;
   const points = Math.floor(calories / 4);
 
-  const unitLabel = unitType === 'g' ? 'g' : unitType === 'ml' ? 'ml' : 'pcs';
+  const unitLabel = (unitType === 'g' && cal100 > 0) ? 'g' : unitType === 'ml' ? 'ml' : 'pcs';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -150,12 +164,15 @@ export default function CheatMealPage() {
       {/* 🔥 HEADER BANNER */}
       <div className="relative h-48 rounded-b-3xl overflow-hidden shadow-md">
         <img
-          src="/images/cheat_img.jpeg"
+          src="/images/cheat_img.webp"
           alt="Cheat Meal"
           className="absolute inset-0 w-full h-full object-cover"
+          loading="eager"
+          decoding="async"
+          fetchPriority="high"
           onError={(e) => {
             e.target.onerror = null;
-            e.target.src = '/images/login.jpg';
+            e.target.src = '/images/login.webp';
           }}
         />
 
@@ -229,12 +246,16 @@ export default function CheatMealPage() {
         {food && (
           <div className="bg-white rounded-xl p-3 shadow-sm flex items-center gap-3 border border-purple-50">
             <img
-              src={food.image || '/images/login.jpg'}
+              src={food.image_url || food.image || '/images/login.webp'}
               alt={food.name}
               className="w-14 h-14 rounded-lg object-cover flex-shrink-0"
+              loading="eager"
+              decoding="async"
+              width={56}
+              height={56}
               onError={(e) => {
                 e.target.onerror = null;
-                e.target.src = '/images/login.jpg';
+                e.target.src = '/images/login.webp';
               }}
             />
 

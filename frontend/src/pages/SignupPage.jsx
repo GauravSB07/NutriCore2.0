@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import logoImg from '../assets/images/logo.png';
-import signupImg from '../assets/images/signup.jpg';
+import logoImg from '../assets/images/logo.webp';
+import signupImg from '../assets/images/signup.webp';
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
@@ -105,6 +105,10 @@ export default function SignupPage() {
                 src={logoImg}
                 alt="NutriCore Logo"
                 className="w-12 h-12 object-contain drop-shadow-[0_3px_8px_rgba(0,0,0,0.08)]"
+                loading="eager"
+                decoding="async"
+                width={48}
+                height={48}
               />
             </div>
           </div>
@@ -132,6 +136,9 @@ export default function SignupPage() {
               src={signupImg}
               alt="Fitness transformation"
               className="w-full h-full object-cover brightness-[0.76] contrast-[1.05]"
+              loading="eager"
+              decoding="async"
+              fetchPriority="high"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/12 to-black/8" />
           </div>

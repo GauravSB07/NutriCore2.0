@@ -63,18 +63,49 @@ class MealLog(models.Model):
         calUnit = food.calories_per_unit or 0
         protUnit = food.protein_per_unit or 0
 
-        # 🔥 SERVING CONVERSION
-        if unit == 'serving' and food.serving_quantity:
-            qty = qty * food.serving_quantity
-            unit = food.unit_type
+        # 🔥 SERVING & PIECE NORMALIZATION
+        if unit == 'piece':
+            unit = 'unit'
+            self.unit = 'unit'
+
+        if unit == 'serving':
+            if food.serving_quantity:
+                qty = qty * food.serving_quantity
+                unit = food.unit_type if food.unit_type in ['g', 'ml'] else 'unit'
+            elif calUnit > 0:
+                unit = 'unit'
+            elif cal100 > 0:
+                qty = qty * 100.0
+                unit = 'g'
 
         # 🔹 CALCULATION
         if unit in ['g', 'ml']:
-            self.calories = (cal100 / 100) * qty
-            self.protein = (prot100 / 100) * qty
+            if cal100 > 0:
+                self.calories = (cal100 / 100.0) * qty
+                self.protein = (prot100 / 100.0) * qty
+            elif calUnit > 0:
+                self.calories = calUnit * qty
+                self.protein = protUnit * qty
+            else:
+                self.calories = 0.0
+                self.protein = 0.0
         else:
-            self.calories = calUnit * qty
-            self.protein = protUnit * qty
+            if calUnit > 0:
+                self.calories = calUnit * qty
+                self.protein = protUnit * qty
+            elif cal100 > 0:
+                if food.serving_quantity:
+                    self.calories = (cal100 / 100.0) * (qty * food.serving_quantity)
+                    self.protein = (prot100 / 100.0) * (qty * food.serving_quantity)
+                else:
+                    self.calories = (cal100 / 100.0) * (qty * 100.0)
+                    self.protein = (prot100 / 100.0) * (qty * 100.0)
+            else:
+                self.calories = 0.0
+                self.protein = 0.0
+
+        self.calories = round(self.calories, 2)
+        self.protein = round(self.protein, 2)
 
         super().save(*args, **kwargs)
 

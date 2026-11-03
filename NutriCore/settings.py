@@ -112,20 +112,32 @@ DATABASE_URL = os.environ.get("DATABASE_URL")
 
 # Detect serverless environment (Vercel, AWS Lambda)
 IS_SERVERLESS = bool(os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"))
-# In serverless environments, connections should not linger across cold lambdas
-DEFAULT_CONN_MAX_AGE = 0 if IS_SERVERLESS else 600
+
+# When using a transaction pooler (such as Supabase PgBouncer on port 6543) or serverless,
+# connections must not linger across requests/lambdas to prevent connection exhaustion.
+is_transaction_pooler = bool(DATABASE_URL and ':6543' in DATABASE_URL)
+DEFAULT_CONN_MAX_AGE = 0 if (IS_SERVERLESS or is_transaction_pooler) else 0
 DB_CONN_MAX_AGE = int(os.environ.get("DB_CONN_MAX_AGE", DEFAULT_CONN_MAX_AGE))
 
+# Disable server-side cursors for PgBouncer transaction pooling compatibility
+DISABLE_SERVER_SIDE_CURSORS = os.environ.get(
+    "DISABLE_SERVER_SIDE_CURSORS",
+    str(is_transaction_pooler or IS_SERVERLESS)
+).lower() in ("true", "1", "t")
+
 if DATABASE_URL:
-    DATABASES = {
-        'default': dj_database_url.parse(
-            DATABASE_URL,
-            conn_max_age=DB_CONN_MAX_AGE,
-            conn_health_checks=(DB_CONN_MAX_AGE > 0),
-            ssl_require=True,
-        )
-    }
+    db_config = dj_database_url.parse(
+        DATABASE_URL,
+        conn_max_age=DB_CONN_MAX_AGE,
+        conn_health_checks=(DB_CONN_MAX_AGE > 0),
+        ssl_require=True,
+    )
+    if DISABLE_SERVER_SIDE_CURSORS:
+        db_config['DISABLE_SERVER_SIDE_CURSORS'] = True
+    db_config.setdefault('OPTIONS', {})['sslmode'] = 'require'
+    DATABASES = {'default': db_config}
 elif os.environ.get("DB_NAME") and os.environ.get("DB_HOST"):
+    db_port = os.environ.get("DB_PORT", "6543" if is_transaction_pooler else "5432")
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
@@ -133,12 +145,13 @@ elif os.environ.get("DB_NAME") and os.environ.get("DB_HOST"):
             'USER': os.environ.get("DB_USER", "postgres"),
             'PASSWORD': os.environ.get("DB_PASSWORD", ""),
             'HOST': os.environ.get("DB_HOST"),
-            'PORT': os.environ.get("DB_PORT", "5432"),
+            'PORT': db_port,
             'OPTIONS': {
                 'sslmode': 'require',
             },
             'CONN_MAX_AGE': DB_CONN_MAX_AGE,
             'CONN_HEALTH_CHECKS': (DB_CONN_MAX_AGE > 0),
+            'DISABLE_SERVER_SIDE_CURSORS': DISABLE_SERVER_SIDE_CURSORS,
         }
     }
 else:
@@ -284,8 +297,8 @@ CSRF_TRUSTED_ORIGINS = [
 SESSION_COOKIE_SAMESITE = None
 CSRF_COOKIE_SAMESITE = None
 
-SESSION_COOKIE_SECURE = False
-CSRF_COOKIE_SECURE = False
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
 
 SESSION_SAVE_EVERY_REQUEST = True
 

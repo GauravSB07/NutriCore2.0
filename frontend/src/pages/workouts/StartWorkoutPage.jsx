@@ -57,12 +57,16 @@ export default function StartWorkoutPage() {
         </div>
 
         <img
-          src="/images/startworkout.png"
+          src="/images/startworkout.webp"
           alt="Workout"
           className="w-20 h-20 object-contain drop-shadow-sm flex-shrink-0"
+          loading="eager"
+          decoding="async"
+          width={80}
+          height={80}
           onError={(e) => {
             e.target.onerror = null;
-            e.target.src = '/images/login.jpg';
+            e.target.src = '/images/login.webp';
           }}
         />
       </div>
@@ -107,13 +111,15 @@ export default function StartWorkoutPage() {
             >
               {/* IMAGE */}
               <img
-                src={m.image_url || m.image || '/images/login.jpg'}
+                src={m.image_url || m.image || '/images/login.webp'}
                 alt={m.name}
                 className="absolute right-0 top-0 h-full w-[65%] object-cover"
                 style={{ filter: 'brightness(0.9) contrast(1.05)' }}
+                loading="lazy"
+                decoding="async"
                 onError={(e) => {
                   e.target.onerror = null;
-                  e.target.src = '/images/login.jpg';
+                  e.target.src = '/images/login.webp';
                 }}
               />
 

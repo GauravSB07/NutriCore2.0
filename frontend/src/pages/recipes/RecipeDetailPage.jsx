@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, RefreshCw } from 'lucide-react';
 import { recipeService } from '../../services/api';
-import mealFallbackImg from '../../assets/images/meal.png';
+import mealFallbackImg from '../../assets/images/meal.webp';
 
 export default function RecipeDetailPage() {
   const { id } = useParams();

@@ -4,7 +4,7 @@ import { ArrowLeft, ChevronDown, RefreshCw } from 'lucide-react';
 import { Line, Bar } from 'react-chartjs-2';
 import '../../components/progress/chartConfig';
 import { progressService } from '../../services/api';
-import workoutChartsImg from '../../assets/images/workout_charts.png';
+import workoutChartsImg from '../../assets/images/workout_charts.webp';
 
 export default function WorkoutChartsPage() {
   const navigate = useNavigate();
@@ -192,6 +192,10 @@ export default function WorkoutChartsPage() {
               src={workoutChartsImg}
               alt="Workout"
               className="w-full h-full object-contain"
+              loading="eager"
+              decoding="async"
+              width={48}
+              height={48}
             />
           </div>
         </div>

@@ -104,12 +104,14 @@ export default function ChooseSubPage() {
             >
               {/* IMAGE */}
               <img
-                src={s.image_url || s.image || '/images/login.jpg'}
+                src={s.image_url || s.image || '/images/login.webp'}
                 alt={s.name}
                 className="absolute right-0 bottom-0 h-full w-[60%] object-cover filter contrast-[1.1] saturate-[1.1]"
+                loading="lazy"
+                decoding="async"
                 onError={(e) => {
                   e.target.onerror = null;
-                  e.target.src = '/images/login.jpg';
+                  e.target.src = '/images/login.webp';
                 }}
               />
 

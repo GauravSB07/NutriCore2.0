@@ -326,6 +326,76 @@ class ProgressAPITests(APITestCase):
         self.assertIn('weight_summary', sum_resp.data)
         self.assertEqual(sum_resp.data['steps_summary']['total_steps'], 8000)
 
+    def test_weekly_progress_optimized_calculation(self):
+        """Verify WeeklyProgressView returns exact daily breakdown, totals, streaks, and progress percent."""
+        today = date.today()
+        cat = Category.objects.create(name='Weekly Test Cat')
+        food = Food.objects.create(name='Weekly Test Food', calories_per_100g=100.0, protein_per_100g=10.0)
+        food.categories.add(cat)
+
+        # Day 0 (today): 2500 cals, 50g protein, not cheat
+        MealLog.objects.create(user=self.user, food=food, quantity=2500.0, calories=2500.0, protein=50.0, date=today, is_cheat=False)
+        StepsLog.objects.create(user=self.user, steps=10000, date=today)
+
+        # Day -1 (yesterday): 1500 cals, 30g protein, is_cheat=True
+        yesterday = today - timedelta(days=1)
+        MealLog.objects.create(user=self.user, food=food, quantity=1500.0, calories=1500.0, protein=30.0, date=yesterday, is_cheat=True)
+        StepsLog.objects.create(user=self.user, steps=5000, date=yesterday)
+
+        # Day -2 (2 days ago): Workout session
+        chest = MuscleGroup.objects.create(name='Weekly Chest')
+        sub = SubMuscle.objects.create(name='Weekly Upper Chest', muscle_group=chest)
+        two_days_ago = today - timedelta(days=2)
+        ws = WorkoutSession.objects.create(user=self.user, sub_muscle=sub)
+        WorkoutSession.objects.filter(pk=ws.pk).update(date=two_days_ago)
+
+        url = reverse('api_progress_weekly')
+        response = self.client.get(url, {'date': str(today)})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        data = response.data
+        self.assertEqual(len(data['labels']), 7)
+        self.assertEqual(len(data['daily_breakdown']), 7)
+
+        # Check today (last item in breakdown, index 6)
+        today_entry = data['daily_breakdown'][6]
+        self.assertEqual(today_entry['date'], str(today))
+        self.assertEqual(today_entry['calories'], 2500.0)
+        self.assertEqual(today_entry['protein'], 250.0)
+        self.assertFalse(today_entry['is_cheat_day'])
+        self.assertEqual(today_entry['steps'], 10000)
+
+        # Check yesterday (index 5)
+        yesterday_entry = data['daily_breakdown'][5]
+        self.assertEqual(yesterday_entry['date'], str(yesterday))
+        self.assertEqual(yesterday_entry['calories'], 1500.0)
+        self.assertEqual(yesterday_entry['protein'], 150.0)
+        self.assertTrue(yesterday_entry['is_cheat_day'])
+        self.assertEqual(yesterday_entry['steps'], 5000)
+
+        # Check two days ago (index 4)
+        two_days_ago_entry = data['daily_breakdown'][4]
+        self.assertEqual(two_days_ago_entry['date'], str(two_days_ago))
+        self.assertEqual(two_days_ago_entry['workout_sessions'], 1)
+
+        # Empty day check (index 0, 6 days ago)
+        empty_entry = data['daily_breakdown'][0]
+        self.assertEqual(empty_entry['calories'], 0.0)
+        self.assertEqual(empty_entry['protein'], 0.0)
+        self.assertFalse(empty_entry['is_cheat_day'])
+        self.assertEqual(empty_entry['steps'], 0)
+        self.assertEqual(empty_entry['workout_sessions'], 0)
+
+        # Totals check
+        self.assertEqual(data['totals']['total_calories'], 4000.0)
+        self.assertEqual(data['totals']['total_protein'], 400.0)
+        self.assertEqual(data['totals']['total_steps'], 15000)
+        self.assertEqual(data['totals']['total_workout_sessions'], 1)
+        self.assertEqual(data['totals']['cheat_days_count'], 1)
+
+        # Streak check: today met target (2500 >= 2000 and not cheat) -> streak 1
+        self.assertEqual(data['streak'], 1)
+
     # --------------------------------------------------------------------------
     # 7. User Data Isolation Tests
     # --------------------------------------------------------------------------

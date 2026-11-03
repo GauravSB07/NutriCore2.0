@@ -37,7 +37,7 @@ class MuscleGroupListView(generics.ListCreateAPIView):
     Creates a new muscle group (Superuser only).
     """
     permission_classes = [IsSuperUserOrReadOnly]
-    queryset = MuscleGroup.objects.all().order_by('name')
+    queryset = MuscleGroup.objects.annotate(sub_muscles_count=Count('sub_muscles')).order_by('name')
     pagination_class = None
 
     def get_serializer_class(self):
@@ -98,7 +98,12 @@ class SubMuscleListView(generics.ListCreateAPIView):
         return SubMuscleSerializer
 
     def get_queryset(self):
-        queryset = SubMuscle.objects.all().select_related('muscle_group').order_by('name')
+        queryset = (
+            SubMuscle.objects.all()
+            .select_related('muscle_group')
+            .annotate(exercises_count=Count('exercises'))
+            .order_by('name')
+        )
         muscle_param = self.request.query_params.get('muscle') or self.request.query_params.get('muscle_group')
         if muscle_param and muscle_param.isdigit():
             queryset = queryset.filter(muscle_group_id=int(muscle_param))
@@ -120,7 +125,7 @@ class SubMuscleDetailView(generics.RetrieveUpdateDestroyAPIView):
     Superuser-guarded modification and deletion.
     """
     permission_classes = [IsSuperUserOrReadOnly]
-    queryset = SubMuscle.objects.all().select_related('muscle_group')
+    queryset = SubMuscle.objects.all().select_related('muscle_group').annotate(exercises_count=Count('exercises'))
     lookup_field = 'id'
 
     def get_serializer_class(self):

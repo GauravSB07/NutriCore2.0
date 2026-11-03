@@ -11,6 +11,7 @@ media/
 # Environment variables
 .env
 .env.*
+.env.mumbai
 !.env.example
 
 # Node.js

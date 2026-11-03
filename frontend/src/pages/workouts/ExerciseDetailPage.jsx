@@ -142,9 +142,12 @@ export default function ExerciseDetailPage() {
             src={exercise.image_url || exercise.image}
             alt={exercise.name}
             className="w-full max-h-[240px] object-contain rounded-[18px]"
+            loading="eager"
+            decoding="async"
+            fetchPriority="high"
             onError={(e) => {
               e.target.onerror = null;
-              e.target.src = '/images/login.jpg';
+              e.target.src = '/images/login.webp';
             }}
           />
         </div>

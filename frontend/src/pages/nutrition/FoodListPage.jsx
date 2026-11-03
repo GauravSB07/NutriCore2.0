@@ -321,14 +321,16 @@ export default function FoodListPage() {
               >
                 {/* IMAGE */}
                 <div className="relative">
-                  {food.image ? (
+                  {food.image_url || food.image ? (
                     <img
-                      src={food.image}
+                      src={food.image_url || food.image}
                       alt={food.name}
                       className="w-full h-28 object-cover rounded-xl"
+                      loading="lazy"
+                      decoding="async"
                       onError={(e) => {
                         e.target.onerror = null;
-                        e.target.src = '/images/login.jpg';
+                        e.target.src = '/images/login.webp';
                       }}
                     />
                   ) : (

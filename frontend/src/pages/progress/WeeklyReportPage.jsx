@@ -5,7 +5,7 @@ import { Bar } from 'react-chartjs-2';
 import '../../components/progress/chartConfig';
 import { progressService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import weeklyReportImg from '../../assets/images/weeklyreport.png';
+import weeklyReportImg from '../../assets/images/weeklyreport.webp';
 
 export default function WeeklyReportPage() {
   const navigate = useNavigate();
@@ -240,6 +240,10 @@ export default function WeeklyReportPage() {
             src={weeklyReportImg}
             alt="Weekly Motivation"
             className="w-20 h-20 object-cover rounded-lg flex-shrink-0"
+            loading="lazy"
+            decoding="async"
+            width={80}
+            height={80}
           />
         </div>
 

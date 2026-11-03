@@ -124,12 +124,16 @@ export default function WaterPage() {
         {/* RIGHT IMAGE */}
         <div className="relative w-28 h-28 flex-shrink-0">
           <img
-            src="/images/Water_img.jpg"
+            src="/images/Water_img.webp"
             alt="Water"
             className="w-full h-full object-cover rounded-2xl opacity-90"
+            loading="eager"
+            decoding="async"
+            width={112}
+            height={112}
             onError={(e) => {
               e.target.onerror = null;
-              e.target.src = '/images/login.jpg';
+              e.target.src = '/images/login.webp';
             }}
           />
           {/* BLEND OVERLAY */}
@@ -245,9 +249,13 @@ export default function WaterPage() {
           >
             <div className="w-12 h-12 rounded-full bg-blue-200 flex items-center justify-center shadow-inner">
               <img
-                src="/images/bottle_img.jpg"
+                src="/images/bottle_img.webp"
                 alt="Bottle"
                 className="w-6 object-contain"
+                loading="lazy"
+                decoding="async"
+                width={24}
+                height={24}
                 onError={(e) => {
                   e.target.onerror = null;
                   e.target.style.display = 'none';

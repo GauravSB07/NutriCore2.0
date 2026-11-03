@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { authService } from '../../services/api';
-import BottomNav from '../../components/common/BottomNav';
-import loginFallbackImg from '../../assets/images/login.jpg';
+import loginFallbackImg from '../../assets/images/login.webp';
 import { ArrowLeft, Edit3, LogOut, ChevronRight, RefreshCw } from 'lucide-react';
 
 export default function ProfilePage() {
@@ -107,6 +106,10 @@ export default function ProfilePage() {
               src={avatarUrl}
               alt={user?.username || 'Profile'}
               className="w-[110px] h-[110px] rounded-full object-cover border-4 border-[#8b5cf6] shadow-md mb-2.5"
+              loading="eager"
+              decoding="async"
+              width={110}
+              height={110}
             />
             <div className="text-[22px] font-bold text-[#5b21b6] tracking-tight">
               {user?.username || 'User'}
@@ -191,9 +194,6 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
-
-      {/* BOTTOM NAV */}
-      <BottomNav activeTab={activeTab} onSelectTab={handleTabSelect} />
     </div>
   );
 }

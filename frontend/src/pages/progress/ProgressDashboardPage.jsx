@@ -13,7 +13,6 @@ import {
   RefreshCw,
   Flame,
 } from 'lucide-react';
-import BottomNav from '../../components/common/BottomNav';
 import { progressService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
@@ -286,9 +285,6 @@ export default function ProgressDashboardPage() {
           </div>
         )}
       </div>
-
-      {/* BOTTOM NAVIGATION */}
-      <BottomNav activeTab="progress" onSelectTab={handleTabSelect} />
     </div>
   );
 }

@@ -357,6 +357,35 @@ class WorkoutAPITests(APITestCase):
         self.assertEqual(sum_resp.data['distinct_exercises_count'], 1)
         self.assertGreaterEqual(len(sum_resp.data['muscle_groups_breakdown']), 1)
 
+    def test_muscle_groups_sub_muscles_count_annotation(self):
+        """Verify MuscleGroup list returns correct sub_muscles_count."""
+        url = reverse('api_workouts_muscles')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = {m['name']: m['sub_muscles_count'] for m in response.data}
+        self.assertEqual(data.get('Chest Test'), 1)
+        self.assertEqual(data.get('Legs Test'), 1)
+
+    def test_sub_muscles_exercises_count_annotation(self):
+        """Verify SubMuscle list returns correct exercises_count."""
+        url = reverse('api_workouts_submuscles')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = {s['name']: s['exercises_count'] for s in response.data}
+        self.assertEqual(data.get('Upper Chest Test'), 2)
+        self.assertEqual(data.get('Quads Test'), 1)
+
+    def test_exercise_list_sub_muscle_lean_response(self):
+        """Verify Exercise list includes sub_muscle details with backward compatibility."""
+        url = reverse('api_workouts_exercises')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        first = response.data['results'][0]
+        self.assertIn('sub_muscle', first)
+        self.assertIn('id', first['sub_muscle'])
+        self.assertIn('name', first['sub_muscle'])
+        self.assertIn('muscle_group_name', first)
+
     # --------------------------------------------------------------------------
     # 6. Existing Django Workout Pages Verification
     # --------------------------------------------------------------------------

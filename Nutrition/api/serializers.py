@@ -6,11 +6,16 @@ from Nutrition.models import Food, Category, MealLog, WaterIntake
 
 
 class CategorySerializer(serializers.ModelSerializer):
-    foods_count = serializers.IntegerField(source='foods.count', read_only=True)
+    foods_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Category
         fields = ['id', 'name', 'foods_count']
+
+    def get_foods_count(self, obj):
+        if hasattr(obj, 'foods_count'):
+            return obj.foods_count
+        return obj.foods.count()
 
 
 class FoodCategoryBriefSerializer(serializers.ModelSerializer):
@@ -21,6 +26,7 @@ class FoodCategoryBriefSerializer(serializers.ModelSerializer):
 
 class FoodSerializer(serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
+    image = serializers.SerializerMethodField()
     categories = FoodCategoryBriefSerializer(many=True, read_only=True)
     carbohydrates_per_100g = serializers.SerializerMethodField()
     fat_per_100g = serializers.SerializerMethodField()
@@ -44,6 +50,7 @@ class FoodSerializer(serializers.ModelSerializer):
             'serving_name',
             'serving_quantity',
             'image_url',
+            'image',
             'categories',
         ]
 
@@ -54,6 +61,9 @@ class FoodSerializer(serializers.ModelSerializer):
             except Exception:
                 return None
         return None
+
+    def get_image(self, obj):
+        return self.get_image_url(obj)
 
     def get_carbohydrates_per_100g(self, obj):
         return None
@@ -109,7 +119,7 @@ class MealLogCreateUpdateSerializer(serializers.ModelSerializer):
     )
     quantity = serializers.FloatField(min_value=0.01)
     unit = serializers.ChoiceField(
-        choices=['g', 'ml', 'unit', 'serving'],
+        choices=['g', 'ml', 'unit', 'piece', 'serving'],
         required=False,
     )
     date = serializers.DateField(required=False, default=localdate)
@@ -132,6 +142,8 @@ class MealLogCreateUpdateSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         food = attrs.get('food') or (self.instance.food if self.instance else None)
         unit = attrs.get('unit') or (self.instance.unit if self.instance else (food.unit_type if food else 'g'))
+        if unit == 'piece':
+            unit = 'unit'
         quantity = attrs.get('quantity') if attrs.get('quantity') is not None else (self.instance.quantity if self.instance else 0)
         is_cheat = attrs.get('is_cheat') if attrs.get('is_cheat') is not None else (self.instance.is_cheat if self.instance else False)
         log_date = attrs.get('date') or (self.instance.date if self.instance else localdate())
@@ -139,7 +151,7 @@ class MealLogCreateUpdateSerializer(serializers.ModelSerializer):
         if quantity <= 0:
             raise serializers.ValidationError({"quantity": "Quantity must be greater than zero."})
 
-        if unit == 'serving' and (not food or not food.serving_quantity):
+        if unit == 'serving' and (not food or (not food.serving_quantity and not food.calories_per_unit)):
             raise serializers.ValidationError({
                 "unit": f"Selected food '{food.name if food else ''}' does not have a defined serving quantity. Please use '{food.unit_type if food else 'g'}'."
             })
@@ -157,12 +169,26 @@ class MealLogCreateUpdateSerializer(serializers.ModelSerializer):
             unit_calc = unit
             if unit_calc == 'serving' and food.serving_quantity:
                 qty = qty * food.serving_quantity
-                unit_calc = food.unit_type
+                unit_calc = food.unit_type if food.unit_type in ['g', 'ml'] else 'unit'
+            elif unit_calc == 'serving' and food.calories_per_unit:
+                unit_calc = 'unit'
 
+            cal100 = food.calories_per_100g or 0
+            calUnit = food.calories_per_unit or 0
             if unit_calc in ['g', 'ml']:
-                calc_cal = ((food.calories_per_100g or 0) / 100) * qty
+                if cal100 > 0:
+                    calc_cal = (cal100 / 100.0) * qty
+                elif calUnit > 0:
+                    calc_cal = calUnit * qty
+                else:
+                    calc_cal = 0
             else:
-                calc_cal = (food.calories_per_unit or 0) * qty
+                if calUnit > 0:
+                    calc_cal = calUnit * qty
+                elif cal100 > 0:
+                    calc_cal = (cal100 / 100.0) * (qty * (food.serving_quantity or 100.0))
+                else:
+                    calc_cal = 0
 
             required_points = int(calc_cal / 4)
 
@@ -241,21 +267,23 @@ class CheatMealLogSerializer(serializers.Serializer):
     )
     quantity = serializers.FloatField(min_value=0.01)
     unit = serializers.ChoiceField(
-        choices=['g', 'ml', 'unit', 'serving'],
+        choices=['g', 'ml', 'unit', 'piece', 'serving'],
         required=False,
     )
     date = serializers.DateField(required=False, default=localdate)
 
     def validate(self, attrs):
         food = attrs.get('food')
-        unit = attrs.get('unit') or food.unit_type
+        unit = attrs.get('unit') or (food.unit_type if food else 'g')
+        if unit == 'piece':
+            unit = 'unit'
         quantity = attrs.get('quantity')
         log_date = attrs.get('date', localdate())
 
         if quantity <= 0:
             raise serializers.ValidationError({"quantity": "Enter a valid positive quantity."})
 
-        if unit == 'serving' and not food.serving_quantity:
+        if unit == 'serving' and not (food.serving_quantity or food.calories_per_unit):
             raise serializers.ValidationError({
                 "unit": f"Food '{food.name}' does not have a serving size defined."
             })
@@ -267,14 +295,35 @@ class CheatMealLogSerializer(serializers.Serializer):
         unit_calc = unit
         if unit_calc == 'serving' and food.serving_quantity:
             qty = qty * food.serving_quantity
-            unit_calc = food.unit_type
+            unit_calc = food.unit_type if food.unit_type in ['g', 'ml'] else 'unit'
+        elif unit_calc == 'serving' and food.calories_per_unit:
+            unit_calc = 'unit'
+
+        cal100 = food.calories_per_100g or 0
+        calUnit = food.calories_per_unit or 0
+        prot100 = food.protein_per_100g or 0
+        protUnit = food.protein_per_unit or 0
 
         if unit_calc in ['g', 'ml']:
-            calories = ((food.calories_per_100g or 0) / 100) * qty
-            protein = ((food.protein_per_100g or 0) / 100) * qty
+            if cal100 > 0:
+                calories = (cal100 / 100.0) * qty
+                protein = (prot100 / 100.0) * qty
+            elif calUnit > 0:
+                calories = calUnit * qty
+                protein = protUnit * qty
+            else:
+                calories = 0
+                protein = 0
         else:
-            calories = (food.calories_per_unit or 0) * qty
-            protein = (food.protein_per_unit or 0) * qty
+            if calUnit > 0:
+                calories = calUnit * qty
+                protein = protUnit * qty
+            elif cal100 > 0:
+                calories = (cal100 / 100.0) * (qty * (food.serving_quantity or 100.0))
+                protein = (prot100 / 100.0) * (qty * (food.serving_quantity or 100.0))
+            else:
+                calories = 0
+                protein = 0
 
         required_points = int(calories / 4)
 

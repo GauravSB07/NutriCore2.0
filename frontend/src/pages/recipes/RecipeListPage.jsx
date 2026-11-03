@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, ChevronDown, ChevronUp, RefreshCw, Utensils } from 'lucide-react';
-import BottomNav from '../../components/common/BottomNav';
 import { recipeService } from '../../services/api';
-import mealFallbackImg from '../../assets/images/meal.png';
+import mealFallbackImg from '../../assets/images/meal.webp';
 
 export default function RecipeListPage() {
   const navigate = useNavigate();
@@ -290,9 +289,6 @@ export default function RecipeListPage() {
           </div>
         )}
       </div>
-
-      {/* BOTTOM NAVIGATION */}
-      <BottomNav activeTab="recipes" onSelectTab={handleTabSelect} />
     </div>
   );
 }

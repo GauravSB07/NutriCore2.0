@@ -444,6 +444,45 @@ class WeeklyProgressView(APIView):
         end_date = base_date - timedelta(weeks=week_offset)
         start_date = end_date - timedelta(days=6)
 
+        # Batch query nutrition, steps, and workout sessions for the 7-day date range
+        meal_aggregates = (
+            MealLog.objects.filter(user=user, date__gte=start_date, date__lte=end_date)
+            .values('date')
+            .annotate(
+                total_calories=Sum('calories'),
+                total_protein=Sum('protein'),
+                cheat_count=Count('id', filter=Q(is_cheat=True)),
+            )
+        )
+        meal_map = {
+            entry['date']: {
+                'calories': float(entry['total_calories'] or 0.0),
+                'protein': float(entry['total_protein'] or 0.0),
+                'is_cheat': (entry['cheat_count'] or 0) > 0,
+            }
+            for entry in meal_aggregates
+        }
+
+        steps_aggregates = (
+            StepsLog.objects.filter(user=user, date__gte=start_date, date__lte=end_date)
+            .values('date')
+            .annotate(total_steps=Sum('steps'))
+        )
+        steps_map = {
+            entry['date']: int(entry['total_steps'] or 0)
+            for entry in steps_aggregates
+        }
+
+        workout_aggregates = (
+            WorkoutSession.objects.filter(user=user, date__gte=start_date, date__lte=end_date)
+            .values('date')
+            .annotate(session_count=Count('id'))
+        )
+        workout_map = {
+            entry['date']: int(entry['session_count'] or 0)
+            for entry in workout_aggregates
+        }
+
         labels = []
         calories_data = []
         protein_data = []
@@ -454,16 +493,15 @@ class WeeklyProgressView(APIView):
         total_progress = 0
         target_calories = profile.daily_calorie_target or 2000
 
-        # Query 7 days in chronological order
+        # Assemble 7 days in chronological order
         for i in range(7):
             day = start_date + timedelta(days=i)
             labels.append(day.strftime('%a'))
 
-            # Nutrition
-            meals = MealLog.objects.filter(user=user, date=day)
-            cal = meals.aggregate(Sum('calories'))['calories__sum'] or 0
-            pro = meals.aggregate(Sum('protein'))['protein__sum'] or 0
-            is_cheat = meals.filter(is_cheat=True).exists()
+            m_info = meal_map.get(day, {'calories': 0.0, 'protein': 0.0, 'is_cheat': False})
+            cal = m_info['calories']
+            pro = m_info['protein']
+            is_cheat = m_info['is_cheat']
 
             calories_data.append(round(cal, 1))
             protein_data.append(round(pro, 1))
@@ -472,13 +510,8 @@ class WeeklyProgressView(APIView):
             if target_calories:
                 total_progress += min(cal / target_calories, 1.0)
 
-            # Steps
-            st = StepsLog.objects.filter(user=user, date=day).aggregate(Sum('steps'))['steps__sum'] or 0
-            steps_data.append(st)
-
-            # Workouts
-            w_count = WorkoutSession.objects.filter(user=user, date=day).count()
-            workouts_data.append(w_count)
+            steps_data.append(steps_map.get(day, 0))
+            workouts_data.append(workout_map.get(day, 0))
 
         # Progress percent
         progress_percent = round((total_progress / 7) * 100, 1) if target_calories else 0.0

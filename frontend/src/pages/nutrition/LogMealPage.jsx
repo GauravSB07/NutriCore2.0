@@ -9,23 +9,26 @@ export default function LogMealPage() {
 
   const isEditMode = Boolean(id);
 
-  const [foods, setFoods] = useState([]);
   const [selectedFood, setSelectedFood] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [searching, setSearching] = useState(false);
 
   const [quantity, setQuantity] = useState('');
   const [unit, setUnit] = useState('g');
   const [showUnitDropdown, setShowUnitDropdown] = useState(false);
 
-  const [loadingInitial, setLoadingInitial] = useState(true);
+  const [loadingInitial, setLoadingInitial] = useState(Boolean(id));
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
   const searchBoxRef = useRef(null);
   const unitBoxRef = useRef(null);
+  const isSelectingRef = useRef(false);
+  const searchTimeoutRef = useRef(null);
 
   const unitLabels = {
     g: 'Grams',
@@ -48,37 +51,45 @@ export default function LogMealPage() {
     return () => document.removeEventListener('click', handleClickOutside);
   }, []);
 
-  // Fetch foods catalog and optionally pre-fill edit meal
+  // Fetch initial popular foods or pre-fill existing meal if editing
   useEffect(() => {
     let isMounted = true;
     async function init() {
-      setLoadingInitial(true);
-      setError(null);
-      try {
-        // Fetch foods list for autocomplete
-        const foodsRes = await nutritionService.getFoods({ page_size: 100 });
-        const foodsList = Array.isArray(foodsRes) ? foodsRes : foodsRes.results || [];
-        if (isMounted) setFoods(foodsList);
-
-        // If editing existing meal
-        if (id) {
+      if (id) {
+        setLoadingInitial(true);
+        setError(null);
+        try {
           const meal = await nutritionService.getMealDetail(id);
           if (isMounted && meal) {
             setQuantity(meal.quantity);
             setUnit(meal.unit || 'g');
             if (meal.food) {
+              isSelectingRef.current = true;
               setSelectedFood(meal.food);
               setSearchQuery(meal.food.name);
             }
           }
+        } catch (err) {
+          if (isMounted) {
+            console.error('Failed to initialize LogMealPage', err);
+            setError('Failed to load meal data.');
+          }
+        } finally {
+          if (isMounted) setLoadingInitial(false);
         }
-      } catch (err) {
-        if (isMounted) {
-          console.error('Failed to initialize LogMealPage', err);
-          setError('Failed to load meal data.');
+      } else {
+        // Create mode: form renders immediately, pre-fetch suggestions in background
+        setLoadingInitial(false);
+        setLoadingSuggestions(true);
+        try {
+          const foodsRes = await nutritionService.getFoods({ page_size: 15 });
+          const list = Array.isArray(foodsRes) ? foodsRes : foodsRes.results || [];
+          if (isMounted) setSuggestions(list);
+        } catch (err) {
+          console.error('Failed to pre-fetch common foods', err);
+        } finally {
+          if (isMounted) setLoadingSuggestions(false);
         }
-      } finally {
-        if (isMounted) setLoadingInitial(false);
       }
     }
     init();
@@ -87,30 +98,75 @@ export default function LogMealPage() {
     };
   }, [id]);
 
-  // Autocomplete suggestions based on search query
+  // Debounced server-side autocomplete search based on search query
   useEffect(() => {
-    if (!searchQuery.trim()) {
-      setSuggestions([]);
+    if (isSelectingRef.current) {
+      isSelectingRef.current = false;
+      return;
+    }
+
+    const query = searchQuery.trim();
+    if (!query) {
       setShowDropdown(false);
       return;
     }
-    const val = searchQuery.toLowerCase();
-    const filtered = foods.filter((f) => f.name.toLowerCase().includes(val)).slice(0, 6);
-    setSuggestions(filtered);
-    setShowDropdown(filtered.length > 0);
-  }, [searchQuery, foods]);
+
+    // Do not reopen suggestions dropdown if user already selected this food
+    if (selectedFood && selectedFood.name.toLowerCase() === query.toLowerCase()) {
+      setShowDropdown(false);
+      return;
+    }
+
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    searchTimeoutRef.current = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const res = await nutritionService.getFoods({ search: query, page_size: 15 });
+        const list = Array.isArray(res) ? res : res.results || [];
+        setSuggestions(list);
+        setShowDropdown(list.length > 0);
+      } catch (err) {
+        console.error('Error fetching food suggestions:', err);
+      } finally {
+        setSearching(false);
+      }
+    }, 250);
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [searchQuery, selectedFood]);
 
   const handleSelectFood = (f) => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    isSelectingRef.current = true;
+    setSearching(false);
     setSelectedFood(f);
     setSearchQuery(f.name);
     setShowDropdown(false);
 
-    // Auto default unit
-    const defaultUnit = (f.calories_per_100g || 0) > 0 ? 'g' : 'unit';
+    // Auto default unit based on available calorie fields & unit_type
+    let defaultUnit = 'g';
+    if ((f.calories_per_100g || 0) > 0) {
+      defaultUnit = f.unit_type === 'ml' ? 'ml' : 'g';
+    } else if ((f.calories_per_unit || 0) > 0) {
+      defaultUnit = 'unit';
+    } else if (f.unit_type) {
+      defaultUnit = f.unit_type === 'piece' ? 'unit' : f.unit_type;
+    }
+
     setUnit(defaultUnit);
 
-    // Auto default quantity if empty
-    if (!quantity) {
+    // Auto default quantity if empty or 0
+    const curQty = parseFloat(quantity);
+    if (!quantity || isNaN(curQty) || curQty <= 0) {
       setQuantity(defaultUnit === 'unit' ? 1 : 100);
     }
   };
@@ -119,9 +175,10 @@ export default function LogMealPage() {
   const getCalculatedNutrition = () => {
     if (!selectedFood) return { calories: 0, protein: 0 };
 
-    let q = parseFloat(quantity) || 0;
-    let u = unit;
+    const q = parseFloat(quantity) || 0;
+    if (q <= 0) return { calories: 0, protein: 0 };
 
+    let u = unit;
     const cal100 = selectedFood.calories_per_100g || 0;
     const prot100 = selectedFood.protein_per_100g || 0;
     const calUnit = selectedFood.calories_per_unit || 0;
@@ -129,20 +186,57 @@ export default function LogMealPage() {
     const servingQty = selectedFood.serving_quantity || 0;
 
     // Serving conversion
-    if (u === 'serving' && servingQty) {
-      q = q * servingQty;
-      u = selectedFood.unit_type;
+    if (u === 'serving') {
+      if (servingQty > 0) {
+        const scaledQty = q * servingQty;
+        const baseUnit = selectedFood.unit_type || 'g';
+        if (baseUnit === 'g' || baseUnit === 'ml') {
+          const c = cal100 > 0 ? (cal100 / 100.0) * scaledQty : calUnit * scaledQty;
+          const p = prot100 > 0 ? (prot100 / 100.0) * scaledQty : protUnit * scaledQty;
+          return {
+            calories: Math.round(c * 10) / 10,
+            protein: Math.round(p * 10) / 10,
+          };
+        } else {
+          const c = calUnit > 0 ? calUnit * scaledQty : (cal100 / 100.0) * scaledQty;
+          const p = protUnit > 0 ? protUnit * scaledQty : (prot100 / 100.0) * scaledQty;
+          return {
+            calories: Math.round(c * 10) / 10,
+            protein: Math.round(p * 10) / 10,
+          };
+        }
+      } else if (calUnit > 0) {
+        u = 'unit';
+      } else if (cal100 > 0) {
+        u = 'g';
+      }
     }
 
     let c = 0;
     let p = 0;
 
     if (u === 'g' || u === 'ml') {
-      c = (cal100 / 100) * q;
-      p = (prot100 / 100) * q;
+      if (cal100 > 0) {
+        c = (cal100 / 100.0) * q;
+        p = (prot100 / 100.0) * q;
+      } else if (calUnit > 0) {
+        c = calUnit * q;
+        p = protUnit * q;
+      }
     } else {
-      c = calUnit * q;
-      p = protUnit * q;
+      // unit or piece
+      if (calUnit > 0) {
+        c = calUnit * q;
+        p = protUnit * q;
+      } else if (cal100 > 0) {
+        if (servingQty > 0) {
+          c = (cal100 / 100.0) * (q * servingQty);
+          p = (prot100 / 100.0) * (q * servingQty);
+        } else {
+          c = (cal100 / 100.0) * (q * 100.0);
+          p = (prot100 / 100.0) * (q * 100.0);
+        }
+      }
     }
 
     return {
@@ -198,7 +292,7 @@ export default function LogMealPage() {
     }
   };
 
-  if (loadingInitial) {
+  if (loadingInitial && isEditMode) {
     return (
       <div className="px-4 pt-6 pb-20 space-y-4 animate-pulse">
         <div className="h-14 bg-purple-200 rounded-3xl"></div>
@@ -267,52 +361,70 @@ export default function LogMealPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Type food name..."
-                className="w-full bg-[#f5f3ff] border border-[#8b5cf6]/20 rounded-2xl p-3 outline-none text-sm text-gray-800 focus:ring-2 focus:ring-purple-300"
+                className="w-full bg-[#f5f3ff] border border-[#8b5cf6]/20 rounded-2xl p-3 pr-10 outline-none text-sm text-gray-800 focus:ring-2 focus:ring-purple-300"
               />
+              {(searching || loadingSuggestions) && (
+                <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-purple-500 pointer-events-none">
+                  <RefreshCw size={16} className="animate-spin" />
+                </div>
+              )}
 
               {/* Suggestions Dropdown */}
-              {showDropdown && suggestions.length > 0 && (
+              {showDropdown && (
                 <div className="absolute w-full bg-white rounded-2xl shadow-xl mt-2 max-h-60 overflow-y-auto z-50 divide-y divide-gray-100 border border-purple-100">
-                  {suggestions.map((f) => {
-                    const calText =
-                      f.calories_per_100g > 0
-                        ? `${f.calories_per_100g} kcal`
-                        : f.calories_per_unit > 0
-                        ? `${f.calories_per_unit} kcal`
-                        : 'No data';
-                    const protText =
-                      f.protein_per_100g > 0
-                        ? `${f.protein_per_100g}g`
-                        : f.protein_per_unit > 0
-                        ? `${f.protein_per_unit}g`
-                        : 'No data';
+                  {searching ? (
+                    <div className="flex items-center justify-center gap-2 p-3 text-xs text-purple-600 font-medium">
+                      <RefreshCw size={14} className="animate-spin" />
+                      <span>Searching foods...</span>
+                    </div>
+                  ) : suggestions.length > 0 ? (
+                    suggestions.map((f) => {
+                      const calText =
+                        f.calories_per_100g > 0
+                          ? `${f.calories_per_100g} kcal`
+                          : f.calories_per_unit > 0
+                          ? `${f.calories_per_unit} kcal`
+                          : 'No data';
+                      const protText =
+                        f.protein_per_100g > 0
+                          ? `${f.protein_per_100g}g`
+                          : f.protein_per_unit > 0
+                          ? `${f.protein_per_unit}g`
+                          : 'No data';
 
-                    return (
-                      <div
-                        key={f.id}
-                        onClick={() => handleSelectFood(f)}
-                        className="flex items-center gap-2.5 p-2.5 hover:bg-purple-50 cursor-pointer transition"
-                      >
-                        <img
-                          src={f.image || '/images/login.jpg'}
-                          alt={f.name}
-                          className="w-11 h-11 rounded-xl object-cover"
-                          onError={(e) => {
-                            e.target.onerror = null;
-                            e.target.src = '/images/login.jpg';
-                          }}
-                        />
-                        <div className="flex-1">
-                          <p className="text-sm font-semibold text-gray-800 line-clamp-1">
-                            {f.name}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {calText} • {protText}
-                          </p>
+                      return (
+                        <div
+                          key={f.id}
+                          onClick={() => handleSelectFood(f)}
+                          className="flex items-center gap-2.5 p-2.5 hover:bg-purple-50 cursor-pointer transition"
+                        >
+                          <img
+                            src={f.image_url || f.image || '/images/login.webp'}
+                            alt={f.name}
+                            className="w-11 h-11 rounded-xl object-cover"
+                            loading="lazy"
+                            decoding="async"
+                            width={44}
+                            height={44}
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src = '/images/login.webp';
+                            }}
+                          />
+                          <div className="flex-1">
+                            <p className="text-sm font-semibold text-gray-800 line-clamp-1">
+                              {f.name}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {calText} • {protText}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })
+                  ) : (
+                    <div className="p-3 text-center text-xs text-gray-400">No foods found</div>
+                  )}
                 </div>
               )}
             </div>

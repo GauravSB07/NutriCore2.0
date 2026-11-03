@@ -21,7 +21,7 @@ class MuscleGroupBriefSerializer(serializers.ModelSerializer):
 
 class MuscleGroupSerializer(serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
-    sub_muscles_count = serializers.IntegerField(source='sub_muscles.count', read_only=True)
+    sub_muscles_count = serializers.SerializerMethodField()
 
     class Meta:
         model = MuscleGroup
@@ -30,10 +30,26 @@ class MuscleGroupSerializer(serializers.ModelSerializer):
     def get_image_url(self, obj):
         return get_media_url(obj.image)
 
+    def get_sub_muscles_count(self, obj):
+        if hasattr(obj, 'sub_muscles_count'):
+            return obj.sub_muscles_count
+        return obj.sub_muscles.count()
+
+
+class SubMuscleLeanSerializer(serializers.ModelSerializer):
+    image_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = SubMuscle
+        fields = ['id', 'name', 'description', 'image_url']
+
+    def get_image_url(self, obj):
+        return get_media_url(obj.image)
+
 
 class SubMuscleBriefSerializer(serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
-    exercises_count = serializers.IntegerField(source='exercises.count', read_only=True)
+    exercises_count = serializers.SerializerMethodField()
 
     class Meta:
         model = SubMuscle
@@ -41,6 +57,11 @@ class SubMuscleBriefSerializer(serializers.ModelSerializer):
 
     def get_image_url(self, obj):
         return get_media_url(obj.image)
+
+    def get_exercises_count(self, obj):
+        if hasattr(obj, 'exercises_count'):
+            return obj.exercises_count
+        return obj.exercises.count()
 
 
 class MuscleGroupDetailSerializer(serializers.ModelSerializer):
@@ -59,7 +80,7 @@ class SubMuscleSerializer(serializers.ModelSerializer):
     muscle_group = MuscleGroupBriefSerializer(read_only=True)
     image_url = serializers.SerializerMethodField()
     video_url = serializers.SerializerMethodField()
-    exercises_count = serializers.IntegerField(source='exercises.count', read_only=True)
+    exercises_count = serializers.SerializerMethodField()
 
     class Meta:
         model = SubMuscle
@@ -79,6 +100,11 @@ class SubMuscleSerializer(serializers.ModelSerializer):
     def get_video_url(self, obj):
         return get_media_url(obj.video)
 
+    def get_exercises_count(self, obj):
+        if hasattr(obj, 'exercises_count'):
+            return obj.exercises_count
+        return obj.exercises.count()
+
 
 class ExerciseBriefSerializer(serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
@@ -92,7 +118,7 @@ class ExerciseBriefSerializer(serializers.ModelSerializer):
 
 
 class ExerciseSerializer(serializers.ModelSerializer):
-    sub_muscle = SubMuscleBriefSerializer(read_only=True)
+    sub_muscle = SubMuscleLeanSerializer(read_only=True)
     muscle_group_name = serializers.CharField(source='sub_muscle.muscle_group.name', read_only=True)
     image_url = serializers.SerializerMethodField()
     video_url = serializers.SerializerMethodField()
@@ -180,7 +206,7 @@ class WorkoutSetCreateUpdateSerializer(serializers.ModelSerializer):
 
 
 class WorkoutSessionSerializer(serializers.ModelSerializer):
-    sub_muscle = SubMuscleBriefSerializer(read_only=True)
+    sub_muscle = SubMuscleLeanSerializer(read_only=True)
     muscle_group_name = serializers.CharField(source='sub_muscle.muscle_group.name', read_only=True)
     total_sets = serializers.SerializerMethodField()
     total_reps = serializers.SerializerMethodField()

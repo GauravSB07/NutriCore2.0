@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import logoImg from '../assets/images/logo.png';
-import loginImg from '../assets/images/login.jpg';
+import logoImg from '../assets/images/logo.webp';
+import loginImg from '../assets/images/login.webp';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
@@ -71,6 +71,10 @@ export default function LoginPage() {
                 src={logoImg}
                 alt="NutriCore Logo"
                 className="w-12 h-12 object-contain drop-shadow-[0_3px_8px_rgba(0,0,0,0.08)]"
+                loading="eager"
+                decoding="async"
+                width={48}
+                height={48}
               />
             </div>
           </div>
@@ -98,6 +102,9 @@ export default function LoginPage() {
               src={loginImg}
               alt="Fitness motivation"
               className="w-full h-full object-cover brightness-[0.72] contrast-[1.05] grayscale-[10%]"
+              loading="eager"
+              decoding="async"
+              fetchPriority="high"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/12 to-black/8" />
           </div>

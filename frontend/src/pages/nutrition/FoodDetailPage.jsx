@@ -184,14 +184,17 @@ export default function FoodDetailPage() {
 
         {/* IMAGE */}
         <div className="absolute right-0 top-0 h-full w-1/2 flex items-center justify-center p-2">
-          {food.image ? (
+          {food.image_url || food.image ? (
             <img
-              src={food.image}
+              src={food.image_url || food.image}
               alt={food.name}
               className="h-44 object-contain drop-shadow-xl"
+              loading="eager"
+              decoding="async"
+              fetchPriority="high"
               onError={(e) => {
                 e.target.onerror = null;
-                e.target.src = '/images/login.jpg';
+                e.target.src = '/images/login.webp';
               }}
             />
           ) : (

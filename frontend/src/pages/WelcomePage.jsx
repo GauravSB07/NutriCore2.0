@@ -1,8 +1,8 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import logoImg from '../assets/images/logo.png';
-import welcomeImg from '../assets/images/welcome.jpg';
+import logoImg from '../assets/images/logo.webp';
+import welcomeImg from '../assets/images/welcome.webp';
 
 export default function WelcomePage() {
   const { user, logout } = useAuth();
@@ -38,6 +38,10 @@ export default function WelcomePage() {
                 src={logoImg}
                 alt="NutriCore Logo"
                 className="w-7 h-7 object-contain"
+                loading="eager"
+                decoding="async"
+                width={28}
+                height={28}
               />
             </div>
           </div>
@@ -65,6 +69,9 @@ export default function WelcomePage() {
               src={welcomeImg}
               alt="Welcome to NutriCore"
               className="w-full h-full object-cover brightness-[0.76] contrast-[1.05]"
+              loading="eager"
+              decoding="async"
+              fetchPriority="high"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/12 to-black/8" />
           </div>

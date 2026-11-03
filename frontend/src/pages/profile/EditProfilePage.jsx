@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { authService } from '../../services/api';
-import loginFallbackImg from '../../assets/images/login.jpg';
+import loginFallbackImg from '../../assets/images/login.webp';
 import { ArrowLeft, CheckCircle2, AlertCircle, Upload } from 'lucide-react';
 
 export default function EditProfilePage() {
@@ -162,6 +162,10 @@ export default function EditProfilePage() {
                 src={imagePreview}
                 alt="Profile Preview"
                 className="w-[110px] h-[110px] rounded-full object-cover border-4 border-[#a78bfa] shadow-md"
+                loading="eager"
+                decoding="async"
+                width={110}
+                height={110}
               />
 
               <div className="w-full bg-[#f5f3ff] border border-[#a78bfa]/40 rounded-[14px] p-2.5 text-center">

@@ -1,6 +1,6 @@
 from datetime import datetime
 from django.utils.timezone import localdate
-from django.db.models import Sum, Q
+from django.db.models import Sum, Q, Count
 from rest_framework import status, generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -34,7 +34,7 @@ class CategoryListView(generics.ListCreateAPIView):
     Creates a new food category (Superuser only).
     """
     permission_classes = [IsSuperUserOrReadOnly]
-    queryset = Category.objects.all().order_by('name')
+    queryset = Category.objects.annotate(foods_count=Count('foods')).order_by('name')
     pagination_class = None
 
     def get_serializer_class(self):
@@ -58,7 +58,7 @@ class CategoryDetailView(generics.RetrieveUpdateDestroyAPIView):
     Superuser-guarded modification and deletion.
     """
     permission_classes = [IsSuperUserOrReadOnly]
-    queryset = Category.objects.all()
+    queryset = Category.objects.annotate(foods_count=Count('foods'))
     lookup_field = 'id'
 
     def get_serializer_class(self):
