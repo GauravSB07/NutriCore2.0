@@ -21,7 +21,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path('django-admin/', admin.site.urls),
     path('api/v1/', include('NutriCore.api_urls')),
     path('',home_view,name="home"),
     path('users/',include('Users.urls')),
